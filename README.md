@@ -16,7 +16,10 @@ TARGET_PATH - The path to the target directory where processed files will be har
 Important: Target and Source path need to be mounted by the same docker volume, in order to appear like being on the same disk inside the container. Otherwise, hardlinking won't work.
 
 DEBUG - Set to True to enable debug logging. Defaults to False.
+
 SCAN_INTERVAL_SECONDS - The interval in seconds for the maintenance and directory scan operations. Defaults to 3600 (1 hour).
+
+DATABASE_FOLDER = The folder the database will be saved in. Default to /database.
 
 Example:
 
@@ -25,5 +28,6 @@ docker run -d \
   -e SOURCE_PATH=/media/source \
   -e TARGET_PATH=/media/target \
   -v /path/to/media:/media \
+  -v /path/to/data:/database
   neneya:mangalinker
 ```

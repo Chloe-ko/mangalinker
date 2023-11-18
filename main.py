@@ -36,9 +36,10 @@ load_dotenv()
 
 logger = get_logger('mangalinker')
 
+database_folder = os.getenv('DATABASE_FOLDER', '/database')
 @contextmanager
-def get_db_connection(db_path):
-    connection = sqlite3.connect(db_path)
+def get_db_connection():
+    connection = sqlite3.connect(f'{database_folder}/mangalinker.db')
     try:
         yield connection
     except sqlite3.Error as e:
@@ -49,7 +50,7 @@ def get_db_connection(db_path):
 
 # Database setup
 logger.info("Setting up database")
-with get_db_connection('file_mappings.db') as conn:
+with get_db_connection() as conn:
     c = conn.cursor()
     logger.info("Running database migrations")
     c.execute('''
@@ -174,7 +175,7 @@ def process_file(source_file_path):
     except FileExistsError:
         logger.warning(f"File already exists: {target_file_path}")
     # Add the mapping to the database
-    with get_db_connection('file_mappings.db') as conn:
+    with get_db_connection() as conn:
         c = conn.cursor()
         c.execute('INSERT INTO mappings (source_filename, target_filename) VALUES (?, ?)', (source_file_path, target_file_path))
         conn.commit()
@@ -188,7 +189,7 @@ def maintenance():
     logger.info("Running maintenance")
 
     # Retrieve all mappings from the database
-    with get_db_connection('file_mappings.db') as conn:
+    with get_db_connection() as conn:
         c = conn.cursor()
         c.execute('SELECT * FROM mappings')
         mappings = c.fetchall()
@@ -211,7 +212,7 @@ def maintenance():
         # If neither the source file nor the target file exists
         elif not source_exists and not target_exists:
             logger.info(f"Removing mapping for missing file: {source_filename}")
-            with get_db_connection('file_mappings.db') as conn:
+            with get_db_connection() as conn:
                 c = conn.cursor()
                 c.execute('DELETE FROM mappings WHERE source_filename=?', (source_filename,))
                 conn.commit()
@@ -226,7 +227,7 @@ def scan_directory():
         for file in files:
             logger.debug(f"Found file: {file}")
             file_path = os.path.join(root, file)
-            with get_db_connection('file_mappings.db') as conn:
+            with get_db_connection() as conn:
                 c = conn.cursor()
                 c.execute('SELECT * FROM mappings WHERE source_filename=?', (file_path,))
                 if not c.fetchone():
