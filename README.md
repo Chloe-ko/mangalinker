@@ -22,5 +22,5 @@ docker run -d \
   -e SOURCE_PATH=/media/source \
   -e TARGET_PATH=/media/target \
   -v /path/to/media:/media \
-  mangawatcher
+  neneya:mangalinker
 ```
