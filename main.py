@@ -34,7 +34,7 @@ def get_logger(name):
 # load env variables
 load_dotenv()
 
-logger = get_logger('mangawatcher')
+logger = get_logger('mangalinker')
 
 @contextmanager
 def get_db_connection(db_path):
