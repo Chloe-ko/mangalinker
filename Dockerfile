@@ -23,5 +23,8 @@ RUN chown -R 99:100 /usr/src/app
 # Run the program as above given user
 USER 99:100
 
+# Specify umask of 000
+RUN umask 000
+
 # Run the application
 CMD ["pipenv", "run", "python", "./main.py"]
