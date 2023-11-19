@@ -104,7 +104,7 @@ implicit_patterns = [
     r'(\d+)([,.+\-_]\d+)?'
 ]
 
-volume_indicators = ['v', 'vol', 'volume']
+volume_indicators = ['vol', 'volume']
 
 def get_chapter(filename, patterns):
     filename = filename.replace(" ", "").lower()
@@ -146,7 +146,7 @@ def get_chapter(filename, patterns):
     return None, original_filename
 
 def get_volume(filename):
-    volume_pattern = r'(v|vol|volume)[ .\-_:]*(\d+)'
+    volume_pattern = r'(vol|volume)[ .\-_:]*(\d+)'
     match = re.search(volume_pattern, filename, re.IGNORECASE)
     if match:
         return str(match.group(2))
