@@ -12,7 +12,7 @@ COPY Pipfile Pipfile.lock ./
 
 # Install dependencies using pipenv
 # --system flag installs dependencies system-wide, avoiding virtualenv
-RUN pipenv install --deploy --system --ignore-pipfile
+RUN pipenv install --deploy --ignore-pipfile
 
 # Copy the current directory contents into the container at /usr/src/app
 COPY . .
