@@ -9,6 +9,7 @@ import sys
 from contextlib import contextmanager
 from dotenv import load_dotenv
 from pathlib import Path
+import shutil
 
 # Logger setup
 def get_logger(name):
@@ -162,7 +163,10 @@ def process_file(source_file_path):
     volume = get_volume(modified_filename)
 
     target_subfolder_path = os.path.join(target_directory, subfolder_name)
-    Path(target_subfolder_path).mkdir(parents=True, exist_ok=True)
+    target_subfolder = Path(target_subfolder_path)
+    target_subfolder.mkdir(parents=True, exist_ok=True)
+    os.chown(target_subfolder_path, os.getenv('UID', 99), os.getenv('GID', 100))
+    os.chmod(target_subfolder_path, 0o777)
 
     target_filename = f"{subfolder_name} Chapter {chapter}"
     if volume:
@@ -172,6 +176,9 @@ def process_file(source_file_path):
     target_file_path = os.path.join(target_subfolder_path, target_filename)
     try:
         os.link(source_file_path, target_file_path)
+        os.chown(target_file_path, os.getenv('UID', 99), os.getenv('GID', 100))
+        # chmod file to 777
+        os.chmod(target_file_path, 0o777)
     except FileExistsError:
         logger.warning(f"File already exists: {target_file_path}")
     # Add the mapping to the database
@@ -200,6 +207,9 @@ def maintenance():
             logger.info(f"Re-creating hardlink for {source_filename}")
             target_subfolder_path = Path(target_filename).parent
             target_subfolder_path.mkdir(parents=True, exist_ok=True)
+            target_subfolder_path.chmod(0o777)
+            # chown the file to the user and group
+            os.chown(target_subfolder_path, os.getenv('UID', 99), os.getenv('GID', 100))
             try:
                 os.link(source_filename, target_filename)
             except FileExistsError:
