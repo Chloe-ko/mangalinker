@@ -17,5 +17,11 @@ RUN PIPENV_VENV_IN_PROJECT=1 pipenv install --deploy --ignore-pipfile
 # Copy the current directory contents into the container at /usr/src/app
 COPY . .
 
+# Set user to 99 and group to 100
+RUN chown -R 99:100 /usr/src/app
+
+# Run the program as above given user
+USER 99:100
+
 # Run the application
 CMD ["pipenv", "run", "python", "./main.py"]
