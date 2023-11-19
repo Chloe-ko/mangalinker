@@ -19,7 +19,13 @@ DEBUG - Set to True to enable debug logging. Defaults to False.
 
 SCAN_INTERVAL_SECONDS - The interval in seconds for the maintenance and directory scan operations. Defaults to 3600 (1 hour).
 
-DATABASE_FOLDER = The folder the database will be saved in. Default to /database.
+DATABASE_FOLDER = The folder the database will be saved in. Defaults to /database.
+
+UMASK = The umask to run with. Defaults to 0022.
+
+UID = The user to run under. Defaults to 99.
+
+GID = The group to run under. Defaults to 100.
 
 Example:
 
