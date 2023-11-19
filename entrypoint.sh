@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # Set the UID and GID for the user
 USER_ID=${UID:-99}
@@ -24,4 +24,4 @@ UMASK_VALUE=${UMASK:-0022}
 umask $UMASK_VALUE
 
 # Run the Python script using pipenv as the specified user
-su user -c "pipenv run python /usr/src/app/main.py"
+su user -c "python /usr/src/app/main.py"
