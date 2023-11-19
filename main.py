@@ -181,10 +181,6 @@ def process_file(source_file_path):
         conn.commit()
         c.close()
 
-class MyHandler(FileSystemEventHandler):
-    def on_created(self, event):
-        if not event.is_directory:
-            process_file(event.src_path)
 def maintenance():
     logger.info("Running maintenance")
 
@@ -218,12 +214,31 @@ def maintenance():
                 conn.commit()
                 c.close()
                 
+
+observer = Observer()
+
+class NewFileHandler(FileSystemEventHandler):
+    def on_created(self, event):
+        if event.is_directory:
+            # New directory created, start watching it
+            logger.info(f"New directory created: {event.src_path}, adding to observer")
+            new_handler = NewFileHandler()
+            observer.schedule(new_handler, path=event.src_path, recursive=True)
+        else:
+            process_file(event.src_path)
+
 def scan_directory():
     logger.info("Running scheduled scan")
     for root, dirs, files in os.walk(source_directory):
         logger.debug(f"Scanning directory: {root}")
         logger.debug(f"Found directories: {dirs}")
         logger.debug(f"Found files: {files}")
+        for dir in dirs:
+            dir_path = os.path.join(root, dir)
+            if not observer.is_observing(dir_path):
+                logger.info(f"New subfolder detected: {dir_path}, adding to observer")
+                new_handler = NewFileHandler()
+                observer.schedule(new_handler, path=dir_path, recursive=True)
         for file in files:
             logger.debug(f"Found file: {file}")
             file_path = os.path.join(root, file)
@@ -235,8 +250,7 @@ def scan_directory():
                 conn.commit()
                 c.close()
 
-observer = Observer()
-event_handler = MyHandler()
+event_handler = NewFileHandler()
 observer.schedule(event_handler, path=source_directory, recursive=True)
 logger.info("Starting observer")
 observer.start()
