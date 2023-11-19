@@ -161,3 +161,4 @@ cython_debug/
 
 # Custom
 file_mappings.db
+mangalinker.db

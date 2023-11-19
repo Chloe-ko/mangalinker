@@ -165,8 +165,11 @@ def process_file(source_file_path):
     target_subfolder_path = os.path.join(target_directory, subfolder_name)
     target_subfolder = Path(target_subfolder_path)
     target_subfolder.mkdir(parents=True, exist_ok=True)
-    os.chown(target_subfolder_path, os.getenv('UID', 99), os.getenv('GID', 100))
-    os.chmod(target_subfolder_path, 0o777)
+    try:
+        os.chown(target_subfolder_path, os.getenv('UID', 99), os.getenv('GID', 100))
+        os.chmod(target_subfolder_path, 0o777)
+    except:
+        logger.warning(f"Failed to chown and chmod target subfolder: {target_subfolder_path}")
 
     target_filename = f"{subfolder_name} Chapter {chapter}"
     if volume:
@@ -176,9 +179,12 @@ def process_file(source_file_path):
     target_file_path = os.path.join(target_subfolder_path, target_filename)
     try:
         os.link(source_file_path, target_file_path)
-        os.chown(target_file_path, os.getenv('UID', 99), os.getenv('GID', 100))
-        # chmod file to 777
-        os.chmod(target_file_path, 0o777)
+        try:
+            os.chown(target_file_path, os.getenv('UID', 99), os.getenv('GID', 100))
+            # chmod file to 777
+            os.chmod(target_file_path, 0o777)
+        except:
+            logger.warning(f"Failed to chown and chmod target file: {target_file_path}")
     except FileExistsError:
         logger.warning(f"File already exists: {target_file_path}")
     # Add the mapping to the database
@@ -208,8 +214,11 @@ def maintenance():
             target_subfolder_path = Path(target_filename).parent
             target_subfolder_path.mkdir(parents=True, exist_ok=True)
             target_subfolder_path.chmod(0o777)
-            # chown the file to the user and group
-            os.chown(target_subfolder_path, os.getenv('UID', 99), os.getenv('GID', 100))
+            try:
+                # chown the file to the user and group
+                os.chown(target_subfolder_path, os.getenv('UID', 99), os.getenv('GID', 100))
+            except:
+                logger.warning(f"Failed to chown target subfolder: {target_subfolder_path}")
             try:
                 os.link(source_filename, target_filename)
             except FileExistsError:
@@ -229,14 +238,37 @@ observer = Observer()
 observed_paths = set()
 class NewFileHandler(FileSystemEventHandler):
     def on_created(self, event):
-        if event.is_directory:
-            # New directory created, start watching it
-            logger.info(f"New directory created: {event.src_path}, adding to observer")
-            new_handler = NewFileHandler()
-            observer.schedule(new_handler, path=event.src_path, recursive=True)
-            observed_paths.add(event.src_path)
         if not event.is_directory:
             process_file(event.src_path)
+
+class NewDirectoryHandler(FileSystemEventHandler):
+    def on_created(self, event):
+        if event.is_directory:
+            # New directory created, start watching it
+            logger.info(f"New sub-directory created: {event.src_path}, adding to observer")
+            new_file_handler = NewFileHandler()
+            observer.schedule(new_file_handler, path=event.src_path, recursive=False)
+            observed_paths.add(event.src_path)
+            # scan it once
+            scan_single_directory(event.src_path)
+
+def scan_single_directory(path):
+    logger.info(f"Scanning single directory: {path}")
+    for root, dirs, files in os.walk(path):
+        logger.debug(f"Scanning directory: {root}")
+        logger.debug(f"Found directories: {dirs}")
+        logger.debug(f"Found files: {files}")
+        for file in files:
+            logger.debug(f"Found file: {file}")
+            file_path = os.path.join(root, file)
+            with get_db_connection() as conn:
+                c = conn.cursor()
+                c.execute('SELECT * FROM mappings WHERE source_filename=?', (file_path,))
+                if not c.fetchone():
+                    process_file(file_path)
+                conn.commit()
+                c.close()
+
 
 def scan_directory():
     logger.info("Running scheduled scan")
@@ -249,7 +281,7 @@ def scan_directory():
             if dir_path not in observed_paths:
                 logger.info(f"New subfolder detected: {dir_path}, adding to observer")
                 new_handler = NewFileHandler()
-                observer.schedule(new_handler, path=dir_path, recursive=True)
+                observer.schedule(new_handler, path=dir_path, recursive=False)
                 observed_paths.add(dir_path)
         for file in files:
             logger.debug(f"Found file: {file}")
@@ -262,8 +294,8 @@ def scan_directory():
                 conn.commit()
                 c.close()
 
-event_handler = NewFileHandler()
-observer.schedule(event_handler, path=source_directory, recursive=True)
+new_folder_handler = NewDirectoryHandler()
+observer.schedule(new_folder_handler, path=source_directory, recursive=False)
 logger.info("Starting observer")
 observer.start()
 
