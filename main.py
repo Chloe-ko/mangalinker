@@ -216,7 +216,7 @@ def maintenance():
                 
 
 observer = Observer()
-
+observed_paths = set()
 class NewFileHandler(FileSystemEventHandler):
     def on_created(self, event):
         if event.is_directory:
@@ -224,7 +224,8 @@ class NewFileHandler(FileSystemEventHandler):
             logger.info(f"New directory created: {event.src_path}, adding to observer")
             new_handler = NewFileHandler()
             observer.schedule(new_handler, path=event.src_path, recursive=True)
-        else:
+            observed_paths.add(event.src_path)
+        if not event.is_directory:
             process_file(event.src_path)
 
 def scan_directory():
@@ -235,10 +236,11 @@ def scan_directory():
         logger.debug(f"Found files: {files}")
         for dir in dirs:
             dir_path = os.path.join(root, dir)
-            if not observer.is_observing(dir_path):
+            if dir_path not in observed_paths:
                 logger.info(f"New subfolder detected: {dir_path}, adding to observer")
                 new_handler = NewFileHandler()
                 observer.schedule(new_handler, path=dir_path, recursive=True)
+                observed_paths.add(dir_path)
         for file in files:
             logger.debug(f"Found file: {file}")
             file_path = os.path.join(root, file)
