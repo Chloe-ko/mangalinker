@@ -171,9 +171,9 @@ def process_file(source_file_path):
     except:
         logger.warning(f"Failed to chown and chmod target subfolder: {target_subfolder_path}")
 
-    target_filename = f"{subfolder_name} Chapter {chapter}"
+    target_filename = f"{subfolder_name} ch.{chapter}"
     if volume:
-        target_filename += f" (Volume {volume})"
+        target_filename += f" vol.{volume}"
     target_filename += os.path.splitext(filename)[1]
 
     target_file_path = os.path.join(target_subfolder_path, target_filename)
