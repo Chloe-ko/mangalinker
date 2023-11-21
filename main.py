@@ -173,10 +173,10 @@ def process_file(source_file_path):
 
     target_filename = f"{subfolder_name}" if os.getenv('INCLUDE_SERIES_IN_FILENAME', True) else ""
     if volume and os.getenv('INCLUDE_VOLUME', False) and os.getenv('VOLUME_FIRST', True):
-        target_filename += f" vol.{volume}"
-    target_filename += f" ch.{chapter}"
+        target_filename += f" volume {volume}"
+    target_filename += f" chapter {chapter}"
     if volume and os.getenv('INCLUDE_VOLUME', False) and not os.getenv('VOLUME_FIRST', True):
-        target_filename += f" vol.{volume}"
+        target_filename += f" volume {volume}"
     target_filename += os.path.splitext(filename)[1]
 
     target_file_path = os.path.join(target_subfolder_path, target_filename)
