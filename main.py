@@ -171,11 +171,11 @@ def process_file(source_file_path):
     except:
         logger.warning(f"Failed to chown and chmod target subfolder: {target_subfolder_path}")
 
-    target_filename = f"{subfolder_name} " if os.getenv('INCLUDE_SERIES_IN_FILENAME', True) else ""
-    if volume and os.getenv('INCLUDE_VOLUME', False) and os.getenv('VOLUME_FIRST', True):
+    target_filename = f"{subfolder_name} " if os.getenv('INCLUDE_SERIES_IN_FILENAME', "true") != "false" else ""
+    if volume and os.getenv('INCLUDE_VOLUME', "false") == "true" and os.getenv('VOLUME_FIRST', "false") == "true":
         target_filename += f"Volume {volume} "
     target_filename += f"Chapter {chapter}"
-    if volume and os.getenv('INCLUDE_VOLUME', False) and not os.getenv('VOLUME_FIRST', True):
+    if volume and os.getenv('INCLUDE_VOLUME', "false") == "true" and os.getenv('VOLUME_FIRST', "true") != "true":
         target_filename += f" Volume {volume}"
     target_filename += os.path.splitext(filename)[1]
 
