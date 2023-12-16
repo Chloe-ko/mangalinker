@@ -270,7 +270,11 @@ class FileHandler(FileSystemEventHandler):
                 c.close()
             if target_filename:
                 logger.info(f"Deleting target file: {target_filename}")
-                os.remove(target_filename)
+                # check if target file exists
+                if Path(target_filename).exists():
+                    os.remove(target_filename)
+                else:
+                    logger.warning(f"Target file does not exist: {target_filename}")
             with get_db_connection() as conn:
                 c = conn.cursor()
                 c.execute('DELETE FROM mappings WHERE source_filename=?', (event.src_path,))
