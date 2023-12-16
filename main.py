@@ -227,33 +227,95 @@ def maintenance():
             except FileExistsError:
                 logger.warning(f"File already exists: {target_filename}")
 
-        # If neither the source file nor the target file exists
-        elif not source_exists and not target_exists:
+        # If the source file doesn't exist
+        elif not source_exists:
             logger.info(f"Removing mapping for missing file: {source_filename}")
             with get_db_connection() as conn:
                 c = conn.cursor()
                 c.execute('DELETE FROM mappings WHERE source_filename=?', (source_filename,))
                 conn.commit()
                 c.close()
+            # Remove the target file
+            if target_exists:
+                logger.info(f"Removing target file: {target_filename}")
+                os.remove(target_filename)
+            
+            # Check if source subfolder is empty or doesn't exist
+            source_subfolder_path = Path(source_filename).parent
+            if not source_subfolder_path.exists() or not os.listdir(source_subfolder_path):
+                # Remove the target subfolder only if the target subfolder is empty
+                target_subfolder_path = Path(target_filename).parent
+                if target_subfolder_path.exists() and not os.listdir(target_subfolder_path):
+                    logger.info(f"Removing target subfolder: {target_subfolder_path}")
+                    shutil.rmtree(target_subfolder_path)
+                    
+                    
                 
 
 observer = Observer()
-observed_paths = set()
-class NewFileHandler(FileSystemEventHandler):
+observed_paths = {}
+class FileHandler(FileSystemEventHandler):
     def on_created(self, event):
         if not event.is_directory:
             process_file(event.src_path)
+    
+    def on_deleted(self, event):
+        if not event.is_directory:
+            logger.info(f"Removing mapping for deleted file: {event.src_path}")
+            target_filename = None
+            with get_db_connection() as conn:
+                c = conn.cursor()
+                c.execute('SELECT target_filename FROM mappings WHERE source_filename=?', (event.src_path,))
+                target_filename = c.fetchone()[0]
+                c.close()
+            if target_filename:
+                logger.info(f"Deleting target file: {target_filename}")
+                os.remove(target_filename)
+            with get_db_connection() as conn:
+                c = conn.cursor()
+                c.execute('DELETE FROM mappings WHERE source_filename=?', (event.src_path,))
+                conn.commit()
+                c.close()
+            # if the target subfolder is now empty, remove it
+            target_subfolder_path = Path(target_filename).parent
+            if target_subfolder_path.exists() and not os.listdir(target_subfolder_path):
+                logger.info(f"Removing target subfolder: {target_subfolder_path}")
+                shutil.rmtree(target_subfolder_path)
+    
 
-class NewDirectoryHandler(FileSystemEventHandler):
+class DirectoryHandler(FileSystemEventHandler):
     def on_created(self, event):
         if event.is_directory:
             # New directory created, start watching it
             logger.info(f"New sub-directory created: {event.src_path}, adding to observer")
-            new_file_handler = NewFileHandler()
-            observer.schedule(new_file_handler, path=event.src_path, recursive=False)
-            observed_paths.add(event.src_path)
+            new_file_handler = FileHandler()
+            observed_paths[event.src_path] = observer.schedule(new_file_handler, path=event.src_path, recursive=False)
             # scan it once
             scan_single_directory(event.src_path)
+    
+    def on_deleted(self, event):
+        if event.is_directory:
+            ### A source directory got deleted. Here's what we have to do:
+            ### 1. Remove the directory from the observer
+            ### 2. Remove the target directory
+            ### 3. Remove all mappings for files in the source directory
+            logger.info(f"Source directory deleted: {event.src_path}")
+            # 1. Remove the directory from the observer
+            logger.info(f"Removing directory from observer: {event.src_path}")
+            observer.unschedule(observed_paths[event.src_path])
+            del observed_paths[event.src_path]
+            # 2. Remove the target directory
+            target_subfolder_path = os.path.join(target_directory, os.path.basename(event.src_path))
+            logger.info(f"Removing target directory: {target_subfolder_path}")
+            shutil.rmtree(target_subfolder_path)
+            # 3. Remove all mappings for files in the source directory
+            logger.info(f"Removing mappings for files in source directory: {event.src_path}")
+            with get_db_connection() as conn:
+                c = conn.cursor()
+                c.execute('DELETE FROM mappings WHERE source_filename LIKE ?', (f"{event.src_path}/%",))
+                conn.commit()
+                c.close()
+            
 
 def scan_single_directory(path):
     logger.info(f"Scanning single directory: {path}")
@@ -283,9 +345,10 @@ def scan_directory():
             dir_path = os.path.join(root, dir)
             if dir_path not in observed_paths:
                 logger.info(f"New subfolder detected: {dir_path}, adding to observer")
-                new_handler = NewFileHandler()
+                new_handler = FileHandler()
                 observer.schedule(new_handler, path=dir_path, recursive=False)
-                observed_paths.add(dir_path)
+                #observed_paths.add(dir_path)\
+                observed_paths[dir_path] = observer.schedule(new_handler, path=dir_path, recursive=False)
         for file in files:
             logger.debug(f"Found file: {file}")
             file_path = os.path.join(root, file)
@@ -297,7 +360,7 @@ def scan_directory():
                 conn.commit()
                 c.close()
 
-new_folder_handler = NewDirectoryHandler()
+new_folder_handler = DirectoryHandler()
 observer.schedule(new_folder_handler, path=source_directory, recursive=False)
 logger.info("Starting observer")
 observer.start()
