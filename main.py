@@ -364,7 +364,7 @@ def scan_directory():
                 conn.commit()
                 c.close()
 
-new_folder_handler = DirectoryHandler()
+#new_folder_handler = DirectoryHandler()
 #observer.schedule(new_folder_handler, path=source_directory, recursive=False)
 #logger.info("Starting observer")
 #observer.start()
